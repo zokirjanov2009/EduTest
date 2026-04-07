@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: educheck_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: educheck_db
+      POSTGRES_USER: educheck_user
+      POSTGRES_PASSWORD: educheck_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U educheck_user -d educheck_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: educheck_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://educheck_user:educheck_pass@db:5432/educheck_db
+      NODE_ENV: production
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLIENT_URL: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Vite build-time API base
+        VITE_API_URL: http://localhost:5000/api
+    container_name: educheck_frontend
+    restart: unless-stopped
+    ports:
+      # frontend/Dockerfile serve port = 8080
+      - "3000:8080"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

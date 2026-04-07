@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum Grade {
+  EXCELLENT
+  GOOD
+  SATISFACTORY
+  UNSATISFACTORY
+}
+
+enum FileType {
+  PDF
+  DOCX
+  XLSX
+}
+
+enum SubmissionStatus {
+  UPLOADED
+  PROCESSING
+  TESTED
+  GRADED
+  FAILED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+
+  // Teacher uchun
+  subject   String?    // Fan nomi (Matematika, Fizika, ...)
+  groups    String[]   @default([]) // Boshqaradigan guruhlar (["1-A","1-B"])
+
+  // Student uchun
+  group     String?    // Talabaning guruhi (1-A)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdById  String?
+  createdBy    User?   @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdUsers User[]  @relation("CreatedUsers")
+
+  teacherId String?
+  teacher   User?   @relation("TeacherStudents", fields: [teacherId], references: [id])
+  students  User[]  @relation("TeacherStudents")
+
+  submissions  Submission[]
+  testResults  TestResult[]
+  gradeReports GradeReport[]
+
+  @@map("users")
+}
+
+model Submission {
+  id            String           @id @default(cuid())
+  title         String
+  fileUrl       String
+  fileType      FileType
+  fileName      String
+  extractedText String?          @db.Text
+  status        SubmissionStatus @default(UPLOADED)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  tests       Test[]
+  gradeReport GradeReport?
+
+  @@map("submissions")
+}
+
+model Test {
+  id        String   @id @default(cuid())
+  questions Json
+  createdAt DateTime @default(now())
+
+  submissionId String     @unique
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  results TestResult[]
+
+  @@map("tests")
+}
+
+model TestResult {
+  id          String   @id @default(cuid())
+  answers     Json
+  score       Int
+  percentage  Float
+  grade       Grade
+  gradeNumber Int
+  feedback    String?  @db.Text
+  submittedAt DateTime @default(now())
+
+  testId String
+  test   Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  gradeReport GradeReport?
+
+  @@map("test_results")
+}
+
+model GradeReport {
+  id          String   @id @default(cuid())
+  grade       Grade
+  gradeNumber Int
+  percentage  Float
+  aiSummary   String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  submissionId String     @unique
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  testResultId String     @unique
+  testResult   TestResult @relation(fields: [testResultId], references: [id])
+
+  @@map("grade_reports")
+}

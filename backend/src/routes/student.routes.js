@@ -1,19 +1,19 @@
-// src/routes/student.routes.js
 const router = require("express").Router();
 const {
   uploadSubmission, getTestQuestions, submitTestAnswers,
-  getMySubmissions, getSubmissionResult, getDashboardStats,
+  getMySubmissions, getSubmissionResult, getDashboardStats, getSemesterInfo,
 } = require("../controllers/student.controller");
 const { isStudent } = require("../middleware/auth");
 const { upload, processUpload } = require("../middleware/upload");
 
 router.use(isStudent);
 
-router.get("/dashboard", getDashboardStats);
+router.get("/dashboard",                          getDashboardStats);
+router.get("/semester",                           getSemesterInfo);
 router.post("/submissions", upload.single("file"), processUpload, uploadSubmission);
-router.get("/submissions", getMySubmissions);
-router.get("/submissions/:submissionId/result", getSubmissionResult);
-router.get("/tests/:testId", getTestQuestions);
-router.post("/tests/:testId/submit", submitTestAnswers);
+router.get("/submissions",                        getMySubmissions);
+router.get("/submissions/:submissionId/result",   getSubmissionResult);
+router.get("/tests/:testId",                      getTestQuestions);
+router.post("/tests/:testId/submit",              submitTestAnswers);
 
 module.exports = router;

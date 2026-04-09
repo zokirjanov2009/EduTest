@@ -1,17 +1,34 @@
 import { useEffect, useState } from 'react'
 import DashboardLayout from '../../components/DashboardLayout'
-import StatCard from '../../components/StatCard'
+import StatsModal from '../../components/StatsModal'
 import { cn, formatDate, statusColors, statusLabels } from '../../lib/utils'
 import api from '../../lib/api'
-import { Users, GraduationCap, FileText, CheckCircle, TrendingUp, Clock, BookOpen } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { Users, GraduationCap, FileText, CheckCircle, Loader2 } from 'lucide-react'
 import { PageLoader } from '../../components/Spinner'
 
-const GRADE_COLORS = ['#ef4444', '#eab308', '#3b82f6', '#10b981']
+function StatBox({ label, value, icon: Icon, color, bg, onClick }) {
+  return (
+    <button onClick={onClick}
+      className="card p-5 text-left hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer w-full">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs text-slate-500 font-medium">{label}</p>
+          <p className="text-3xl font-bold text-slate-900 mt-1">{value ?? 0}</p>
+        </div>
+        <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center', bg)}>
+          <Icon className={cn('w-5 h-5', color)} />
+        </div>
+      </div>
+    </button>
+  )
+}
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats]       = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [modal, setModal]       = useState(null)
+  const [modalData, setModalData] = useState([])
+  const [modalLoading, setModalLoading] = useState(false)
 
   useEffect(() => {
     api.get('/admin/dashboard')
@@ -19,93 +36,105 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <DashboardLayout title="Administrator paneli"><PageLoader /></DashboardLayout>
+  const openModal = async (type) => {
+    setModal(type)
+    setModalLoading(true)
+    try {
+      if (type === 'teachers') {
+        const { data } = await api.get('/admin/teachers?limit=100')
+        setModalData(data.data.teachers)
+      } else if (type === 'students') {
+        const { data } = await api.get('/admin/students?limit=100')
+        setModalData(data.data.students)
+      } else if (type === 'submissions') {
+        const { data } = await api.get('/admin/students?limit=100')
+        setModalData(data.data.students)
+      } else if (type === 'graded') {
+        const { data } = await api.get('/admin/students?limit=100')
+        setModalData(data.data.students)
+      }
+    } finally { setModalLoading(false) }
+  }
 
-  const chartData = stats ? [
-    { name: "2", label: "Qoniqarsiz", count: stats.gradeDistribution?.[2] || 0 },
-    { name: "3", label: "Qoniqarli", count: stats.gradeDistribution?.[3] || 0 },
-    { name: "4", label: "Yaxshi", count: stats.gradeDistribution?.[4] || 0 },
-    { name: "5", label: "A'lo", count: stats.gradeDistribution?.[5] || 0 },
-  ] : []
+  if (loading) return <DashboardLayout title="Admin Dashboard"><PageLoader /></DashboardLayout>
+
+  const modalTitles = {
+    teachers:    "O'qituvchilar ro'yxati",
+    students:    "Talabalar ro'yxati",
+    submissions: "Jami Ishlar",
+    graded:      "Baholangan Ishlar",
+  }
 
   return (
-    <DashboardLayout title="Administrator paneli">
-      <div className="space-y-5">
+    <DashboardLayout title="Admin Dashboard">
+      <div className="space-y-5 pb-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard title="O'qituvchilar" value={stats.totalTeachers} icon={Users} iconColor="text-purple-600" iconBg="bg-purple-50" />
-          <StatCard title="Talabalar" value={stats.totalStudents} icon={GraduationCap} iconColor="text-blue-600" iconBg="bg-blue-50" />
-          <StatCard title="Jami Ishlar" value={stats.totalSubmissions} icon={FileText} iconColor="text-slate-600" iconBg="bg-slate-100" />
-          <StatCard title="Baholangan" value={stats.totalGradedSubmissions} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50"
-            subtitle={`Kutilmoqda: ${stats.pendingSubmissions}`} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Baholar chart */}
-          <div className="card p-5">
-            <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <TrendingUp size={16} className="text-primary-500" /> Baholar
-            </h2>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={chartData} barSize={32}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip cursor={{ fill: '#f1f5f9' }}
-                  contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }} />
-                <Bar dataKey="count" radius={[5, 5, 0, 0]}>
-                  {chartData.map((_, i) => <Cell key={i} fill={GRADE_COLORS[i]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Fanlar */}
-          <div className="card p-5">
-            <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <BookOpen size={16} className="text-amber-500" /> Fanlar bo'yicha
-            </h2>
-            {!stats.subjects?.length ? (
-              <p className="text-slate-400 text-sm text-center py-8">Hali o'qituvchilar yo'q</p>
-            ) : (
-              <div className="space-y-2">
-                {stats.subjects.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm font-medium text-slate-800 truncate">📚 {s.name}</span>
-                    <span className="badge bg-amber-50 text-amber-700 border-amber-200 text-xs ml-2 flex-shrink-0">
-                      {s.count} ta
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Oxirgi yuklamalar */}
-          <div className="card p-5">
-            <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Clock size={16} className="text-primary-500" /> Oxirgi Yuklamalar
-            </h2>
-            <div className="space-y-2.5">
-              {!stats.recentSubmissions?.length
-                ? <p className="text-slate-400 text-sm text-center py-6">Hali ishlar yo'q</p>
-                : stats.recentSubmissions.map((s) => (
-                  <div key={s.id} className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-slate-800 truncate">{s.title}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {s.student?.name}
-                        {s.student?.group && <span className="text-indigo-500 ml-1">({s.student.group})</span>}
-                      </p>
-                    </div>
-                    <span className={cn('badge text-xs flex-shrink-0', statusColors[s.status])}>
-                      {statusLabels[s.status]}
-                    </span>
-                  </div>
-                ))
-              }
-            </div>
-          </div>
+          <StatBox label="O'qituvchilar"  value={stats.totalTeachers}
+            icon={Users}         color="text-purple-600" bg="bg-purple-50"
+            onClick={() => openModal('teachers')} />
+          <StatBox label="Talabalar"      value={stats.totalStudents}
+            icon={GraduationCap} color="text-blue-600"   bg="bg-blue-50"
+            onClick={() => openModal('students')} />
+          <StatBox label="Jami Ishlar"    value={stats.totalSubmissions}
+            icon={FileText}      color="text-slate-600"  bg="bg-slate-100"
+            onClick={() => openModal('submissions')} />
+          <StatBox label="Baholangan"     value={stats.totalGradedSubmissions}
+            icon={CheckCircle}   color="text-emerald-600" bg="bg-emerald-50"
+            onClick={() => openModal('graded')} />
         </div>
       </div>
+
+      <StatsModal
+        isOpen={!!modal}
+        onClose={() => { setModal(null); setModalData([]) }}
+        title={modalTitles[modal] || ''}
+        loading={modalLoading}
+      >
+        {modal === 'teachers' && (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {modalData.length === 0 ? <p className="text-center text-slate-400 py-8">Ma'lumot yo'q</p>
+            : modalData.map(t => (
+              <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <div className="w-9 h-9 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-purple-700 font-bold text-sm">{t.name[0]?.toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 text-sm">{t.name}</p>
+                  <p className="text-xs text-slate-400">{t.email}</p>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  {(t.groups || []).map(g => (
+                    <span key={g} className="badge bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">{g}</span>
+                  ))}
+                  <span className={cn('badge text-xs', t.isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200')}>
+                    {t.isActive ? 'Faol' : 'Blok'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {modal === 'students' && (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {modalData.length === 0 ? <p className="text-center text-slate-400 py-8">Ma'lumot yo'q</p>
+            : modalData.map(s => (
+              <div key={s.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-emerald-700 font-bold text-xs">{s.name[0]?.toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 text-sm">{s.name}</p>
+                  <p className="text-xs text-slate-400">{s.email}</p>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                  {s.group && <span className="badge bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">{s.group}</span>}
+                  <span className="badge bg-slate-100 text-slate-600 border-slate-200 text-xs">{s._count?.submissions ?? 0} ish</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </StatsModal>
     </DashboardLayout>
   )
 }

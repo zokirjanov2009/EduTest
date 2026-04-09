@@ -34,31 +34,44 @@ enum SubmissionStatus {
   FAILED
 }
 
-model User {
+// ===== SEMESTER =====
+model Semester {
   id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(STUDENT)
-
-  // Teacher uchun
-  subject   String?    // Fan nomi (Matematika, Fizika, ...)
-  groups    String[]   @default([]) // Boshqaradigan guruhlar (["1-A","1-B"])
-
-  // Student uchun
-  group     String?    // Talabaning guruhi (1-A)
-
+  name      String   // "2024-2025 Bahor"
+  group     String   // "1-A"
+  teacherId String
+  teacher   User     @relation("TeacherSemesters", fields: [teacherId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  deadline  DateTime
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@map("semesters")
+}
+
+model User {
+  id       String  @id @default(cuid())
+  name     String
+  email    String  @unique
+  password String
+  role     Role    @default(STUDENT)
+  subject  String?
+  groups   String[] @default([])
+  group    String?
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   createdById  String?
-  createdBy    User?   @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdBy    User?   @relation("CreatedUsers",   fields: [createdById], references: [id])
   createdUsers User[]  @relation("CreatedUsers")
 
   teacherId String?
   teacher   User?   @relation("TeacherStudents", fields: [teacherId], references: [id])
   students  User[]  @relation("TeacherStudents")
+
+  semesters Semester[] @relation("TeacherSemesters")
 
   submissions  Submission[]
   testResults  TestResult[]
@@ -75,6 +88,8 @@ model Submission {
   fileName      String
   extractedText String?          @db.Text
   status        SubmissionStatus @default(UPLOADED)
+  semesterId    String?          // Qaysi semestrga tegishli
+  attemptNumber Int              @default(1) // 1 yoki 2
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -127,6 +142,7 @@ model GradeReport {
   gradeNumber Int
   percentage  Float
   aiSummary   String?  @db.Text
+  extraChance Boolean  @default(false) // Teacher 3-imkoniyat berdi
   createdAt   DateTime @default(now())
 
   submissionId String     @unique

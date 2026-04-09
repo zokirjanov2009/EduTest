@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import DashboardLayout from '../../components/DashboardLayout'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { cn, formatDate } from '../../lib/utils'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -13,6 +14,8 @@ export default function AdminStudents() {
   const [filterTeacher, setFilterTeacher] = useState('')
   const [page, setPage]             = useState(1)
   const [pagination, setPagination] = useState({})
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [toggleConfirm, setToggleConfirm] = useState(null)
 
   const fetchStudents = () => {
     setLoading(true)
@@ -28,14 +31,22 @@ export default function AdminStudents() {
   }, [])
   useEffect(() => { fetchStudents() }, [page, search, filterTeacher])
 
-  const handleToggle = async (id) => {
-    try { const { data } = await api.patch(`/admin/users/${id}/toggle`); toast.success(data.message); fetchStudents() }
-    catch { toast.error('Xatolik') }
+  const handleToggle = async () => {
+    try {
+      const { data } = await api.patch(`/admin/users/${toggleConfirm.id}/toggle`)
+      toast.success(data.message)
+      fetchStudents()
+    } catch { toast.error('Xatolik') }
+    finally { setToggleConfirm(null) }
   }
-  const handleDelete = async (id, name) => {
-    if (!confirm(`"${name}" ni o'chirasizmi?`)) return
-    try { await api.delete(`/admin/users/${id}`); toast.success("O'chirildi!"); fetchStudents() }
-    catch { toast.error('Xatolik') }
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/admin/users/${deleteConfirm.id}`)
+      toast.success("O'chirildi!")
+      fetchStudents()
+    } catch { toast.error('Xatolik') }
+    finally { setDeleteConfirm(null) }
   }
 
   return (
@@ -61,7 +72,7 @@ export default function AdminStudents() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {['Talaba', 'Guruh', 'O\'qituvchi', 'Ishlar', 'Holat', 'Sana', 'Amallar'].map(h => (
+                  {["Talaba", "Guruh", "O'qituvchi", "Ishlar", "Holat", "Sana", "Amallar"].map(h => (
                     <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -103,10 +114,11 @@ export default function AdminStudents() {
                     <td className="px-4 py-3.5 text-slate-500 text-sm">{formatDate(s.createdAt)}</td>
                     <td className="px-4 py-3.5">
                       <div className="flex gap-1">
-                        <button onClick={() => handleToggle(s.id)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                        <button onClick={() => setToggleConfirm({ id: s.id, name: s.name, isActive: s.isActive })}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
                           {s.isActive ? <ToggleRight size={18} className="text-green-500" /> : <ToggleLeft size={18} className="text-red-400" />}
                         </button>
-                        <button onClick={() => handleDelete(s.id, s.name)}
+                        <button onClick={() => setDeleteConfirm({ id: s.id, name: s.name })}
                           className="p-1.5 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors">
                           <Trash2 size={15} />
                         </button>
@@ -131,6 +143,12 @@ export default function AdminStudents() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete}
+        title={`"${deleteConfirm?.name}" ni o'chirish`} message="Bu amalni qaytarib bo'lmaydi!" danger />
+      <ConfirmDialog isOpen={!!toggleConfirm} onClose={() => setToggleConfirm(null)} onConfirm={handleToggle}
+        title={toggleConfirm?.isActive ? 'Bloklash' : 'Faollashtirish'}
+        message={`"${toggleConfirm?.name}" ni ${toggleConfirm?.isActive ? 'bloklamoqchimisiz' : 'faollashtirmoqchimisiz'}?`} />
     </DashboardLayout>
   )
 }

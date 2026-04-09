@@ -11,15 +11,14 @@ import AdminStudents  from './pages/admin/Students'
 // Teacher
 import TeacherDashboard from './pages/teacher/Dashboard'
 import TeacherStudents  from './pages/teacher/Students'
-import TeacherGrades    from './pages/teacher/Grades'
+import TeacherGroups    from './pages/teacher/Groups'
 
 // Student
-import StudentDashboard   from './pages/student/Dashboard'
-import StudentUpload      from './pages/student/Upload'
-import StudentSubmissions from './pages/student/Submissions'
-import StudentResult      from './pages/student/Result'
-import StudentTest        from './pages/student/Test'
-import StudentHistory     from './pages/student/History'
+import StudentDashboard from './pages/student/Dashboard'
+import StudentUpload    from './pages/student/Upload'
+import StudentResult    from './pages/student/Result'
+import StudentTest      from './pages/student/Test'
+import StudentHistory   from './pages/student/History'
 
 import PrivateRoute from './components/PrivateRoute'
 
@@ -49,15 +48,14 @@ export default function App() {
       {/* Teacher */}
       <Route path="/teacher/dashboard" element={<PrivateRoute role="TEACHER"><TeacherDashboard /></PrivateRoute>} />
       <Route path="/teacher/students"  element={<PrivateRoute role="TEACHER"><TeacherStudents /></PrivateRoute>} />
-      <Route path="/teacher/grades"    element={<PrivateRoute role="TEACHER"><TeacherGrades /></PrivateRoute>} />
+      <Route path="/teacher/groups"    element={<PrivateRoute role="TEACHER"><TeacherGroups /></PrivateRoute>} />
 
       {/* Student */}
-      <Route path="/student/dashboard"       element={<PrivateRoute role="STUDENT"><StudentDashboard /></PrivateRoute>} />
-      <Route path="/student/upload"          element={<PrivateRoute role="STUDENT"><StudentUpload /></PrivateRoute>} />
-      <Route path="/student/submissions"     element={<PrivateRoute role="STUDENT"><StudentSubmissions /></PrivateRoute>} />
-      <Route path="/student/submissions/:id" element={<PrivateRoute role="STUDENT"><StudentResult /></PrivateRoute>} />
-      <Route path="/student/test/:testId"    element={<PrivateRoute role="STUDENT"><StudentTest /></PrivateRoute>} />
-      <Route path="/student/history"         element={<PrivateRoute role="STUDENT"><StudentHistory /></PrivateRoute>} />
+      <Route path="/student/dashboard"        element={<PrivateRoute role="STUDENT"><StudentDashboard /></PrivateRoute>} />
+      <Route path="/student/upload"           element={<PrivateRoute role="STUDENT"><StudentUpload /></PrivateRoute>} />
+      <Route path="/student/submissions/:id"  element={<PrivateRoute role="STUDENT"><StudentResult /></PrivateRoute>} />
+      <Route path="/student/test/:testId"     element={<PrivateRoute role="STUDENT"><StudentTest /></PrivateRoute>} />
+      <Route path="/student/history"          element={<PrivateRoute role="STUDENT"><StudentHistory /></PrivateRoute>} />
 
       {/* 404 */}
       <Route path="*" element={<Navigate to="/" replace />} />

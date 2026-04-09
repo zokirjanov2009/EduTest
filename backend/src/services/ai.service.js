@@ -1,9 +1,12 @@
 // ai.service.js — Groq (retry logic bilan)
 const Groq = require("groq-sdk");
 
-const getGroq = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
+let _groq = null;
+const getGroq = () => {
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  return _groq;
+};
 
-// Retry helper — 429 da kutadi
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const groqRequest = async (params, retries = 3) => {
@@ -13,8 +16,8 @@ const groqRequest = async (params, retries = 3) => {
     } catch (err) {
       const status = err?.status || err?.error?.status;
       if (status === 429 && i < retries - 1) {
-        const wait = (i + 1) * 5000; // 5s, 10s, 15s
-        console.log(`⏳ Groq 429 - ${wait / 1000}s kutamiz...`);
+        const wait = (i + 1) * 5000;
+        console.log(`⏳ Groq 429 - ${wait/1000}s kutamiz...`);
         await sleep(wait);
         continue;
       }
@@ -25,12 +28,20 @@ const groqRequest = async (params, retries = 3) => {
 
 // ===== 5 TA TEST SAVOL =====
 const generateTests = async (extractedText, title = "Mustaqil ish") => {
+  const isMath = /matematik|algebra|geometr|integral|differensial|tengla|formula|hisob|son|to'plam|funksiya|limit/i.test(extractedText + title);
+
+  const latexHint = isMath
+    ? `MUHIM: Matematik formulalar, tenglamalar, ifodalarni LaTeX formatida yoz. Inline uchun $formula$, blok uchun $$formula$$ ishlatama. Masalan: $x^2 + y^2 = r^2$, $\\frac{a}{b}$, $\\sqrt{x}$`
+    : `Savollarni O'zbek tilida yoz.`;
+
   const prompt = `Sen talabalar mustaqil ishini tekshiruvchi AI yordamchisan.
 
 Quyidagi matn asosida 5 ta test savoli tuz:
 """
 ${extractedText.substring(0, 5000)}
 """
+
+${latexHint}
 
 FAQAT JSON formatda javob ber, boshqa hech narsa yozma:
 {"questions":[{"id":1,"question":"Savol matni?","options":{"A":"variant1","B":"variant2","C":"variant3","D":"variant4"},"correctAnswer":"A","explanation":"Izoh"},{"id":2,"question":"Savol?","options":{"A":"...","B":"...","C":"...","D":"..."},"correctAnswer":"B","explanation":"Izoh"},{"id":3,"question":"Savol?","options":{"A":"...","B":"...","C":"...","D":"..."},"correctAnswer":"C","explanation":"Izoh"},{"id":4,"question":"Savol?","options":{"A":"...","B":"...","C":"...","D":"..."},"correctAnswer":"A","explanation":"Izoh"},{"id":5,"question":"Savol?","options":{"A":"...","B":"...","C":"...","D":"..."},"correctAnswer":"D","explanation":"Izoh"}]}`;
@@ -43,8 +54,6 @@ FAQAT JSON formatda javob ber, boshqa hech narsa yozma:
   });
 
   const text = completion.choices[0]?.message?.content || "";
-
-  // JSON ajratish
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("AI javob formati noto'g'ri");
 
@@ -55,11 +64,10 @@ FAQAT JSON formatda javob ber, boshqa hech narsa yozma:
   if (!parsed.questions || parsed.questions.length < 5)
     throw new Error("AI 5 ta savol yarata olmadi");
 
-  // Validatsiya
   const valid = parsed.questions.slice(0, 5).every(q =>
     q.question && q.options?.A && q.options?.B &&
     q.options?.C && q.options?.D &&
-    ["A", "B", "C", "D"].includes(q.correctAnswer)
+    ["A","B","C","D"].includes(q.correctAnswer)
   );
   if (!valid) throw new Error("AI savollar formati noto'g'ri");
 
@@ -76,12 +84,12 @@ const gradeAnswers = async (questions, studentAnswers) => {
     const isCorrect = studentAnswer === q.correctAnswer;
     if (isCorrect) correctCount++;
     results.push({
-      questionId: q.id || i + 1,
-      question: q.question,
+      questionId:    q.id || i + 1,
+      question:      q.question,
       studentAnswer,
       correctAnswer: q.correctAnswer,
       isCorrect,
-      explanation: q.explanation || "",
+      explanation:   q.explanation || "",
     });
   });
 
@@ -115,10 +123,10 @@ const generateFeedback = async (extractedText, correctCount, percentage, results
 
 // ===== BAHO =====
 const calculateGrade = (correctCount) => {
-  if (correctCount === 5) return { grade: "EXCELLENT", gradeNumber: 5 };
-  if (correctCount === 4) return { grade: "GOOD", gradeNumber: 4 };
-  if (correctCount === 3) return { grade: "SATISFACTORY", gradeNumber: 3 };
-  return { grade: "UNSATISFACTORY", gradeNumber: 2 };
+  if (correctCount === 5) return { grade: "EXCELLENT",      gradeNumber: 5 };
+  if (correctCount === 4) return { grade: "GOOD",           gradeNumber: 4 };
+  if (correctCount === 3) return { grade: "SATISFACTORY",   gradeNumber: 3 };
+  return                         { grade: "UNSATISFACTORY", gradeNumber: 2 };
 };
 
 module.exports = { generateTests, gradeAnswers, generateFeedback, calculateGrade };

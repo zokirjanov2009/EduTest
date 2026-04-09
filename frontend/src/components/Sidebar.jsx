@@ -5,6 +5,7 @@ import { cn } from '../lib/utils'
 import {
   LayoutDashboard, Users, GraduationCap, ClipboardList,
   LogOut, BookOpen, ChevronRight, FileText, History, Menu, X,
+  Book,
 } from 'lucide-react'
 
 const NAV = {
@@ -16,12 +17,11 @@ const NAV = {
   TEACHER: [
     { href: '/teacher/dashboard', label: 'Dashboard',   icon: LayoutDashboard },
     { href: '/teacher/students',  label: 'Talabalarim', icon: GraduationCap },
-    { href: '/teacher/grades',    label: 'Baholar',     icon: ClipboardList },
+    { href: '/teacher/groups',    label: 'Guruhlar',     icon: BookOpen },
   ],
   STUDENT: [
     { href: '/student/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
     { href: '/student/upload',      label: 'Ish Yuklash', icon: FileText },
-    { href: '/student/submissions', label: 'Ishlarim',    icon: ClipboardList },
     { href: '/student/history',     label: 'Tarix',       icon: History },
   ],
 }
